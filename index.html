@@ -1,260 +1,557 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Badminton Billing App</title>
-    <link rel="icon" type="image/png" href="player.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <!-- Banner -->
-    <header class="banner text-center py-3">
-        <!-- img src="https://placehold.co/150x50?text=Social+Badminton" alt="Social Badminton Logo" class="banner-logo"-->
-        <h1 class="banner-title">Badminton Billing App</h1>
-    </header>
+let SQL;
+let db;
 
-    <div class="container my-4">
-        <!-- Tabs -->
-        <ul class="nav nav-tabs mb-4" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="true">Dashboard</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="players-tab" data-bs-toggle="tab" data-bs-target="#players" type="button" role="tab" aria-controls="players" aria-selected="false">Players</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab" aria-controls="attendance" aria-selected="false">Attendance</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="fees-tab" data-bs-toggle="tab" data-bs-target="#fees" type="button" role="tab" aria-controls="fees" aria-selected="false">Fees</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="billing-tab" data-bs-toggle="tab" data-bs-target="#billing" type="button" role="tab" aria-controls="billing" aria-selected="false">Billing</button>
-            </li>
-        </ul>
+const BadmintonApp = {
+    // Use AEST for current date (June 1, 2025, 01:49 AM AEST)
+    currentDate: new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }),
+    currentYear: new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' })).getFullYear(),
+    currentMonth: new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' })).getMonth(),
+    currentWeek: 1,
+    totalWeeks: 5,
 
-        <!-- Tab Content -->
-        <div class="tab-content">
-            <!-- Dashboard Tab -->
-            <div class="tab-pane fade show active" id="dashboard" role="tabpanel" aria-labelledby="dashboard-tab">
-                <h2>Dashboard</h2>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="dashboardYear" class="form-label">Year</label>
-                        <select id="dashboardYear" class="form-select"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="dashboardMonth" class="form-label">Month</label>
-                        <select id="dashboardMonth" class="form-select">
-                            <option value="0">January</option>
-                            <option value="1">February</option>
-                            <option value="2">March</option>
-                            <option value="3">April</option>
-                            <option value="4">May</option>
-                            <option value="5">June</option>
-                            <option value="6">July</option>
-                            <option value="7">August</option>
-                            <option value="8">September</option>
-                            <option value="9">October</option>
-                            <option value="10">November</option>
-                            <option value="11">December</option>
-                        </select>
-                    </div>
-                </div>
-                <h3>Summary</h3>
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr>
-                            <th>Player</th>
-                            <th>Month</th>
-                            <th>Attendance</th>
-                            <th>Bill Amount ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboardSummary"></tbody>
-                </table>
-                <h3>Attendance Graph</h3>
-                <div id="attendanceGraph" style="width: 100%; height: 400px;"></div>
-            </div>
+    async init() {
+        try {
+            // Initialize sql.js
+            const response = await fetch('https://cdn.jsdelivr.net/npm/sql.js@1.11.0/dist/sql-wasm.wasm');
+            if (!response.ok) throw new Error('Failed to load sql-wasm.wasm');
+            const wasmBinary = await response.arrayBuffer();
+            SQL = await initSqlJs({ wasmBinary });
+            db = new SQL.Database();
+            this.createTables();
+            this.populateYearDropdowns();
+            this.setDefaultSelections();
+            this.bindEventListeners();
+            this.updatePlayerList();
+            this.updateFeesDisplay();
+            this.updateAttendanceTable();
+            this.updateDashboard();
+            this.generateBills();
+        } catch (e) {
+            console.error('Initialization error:', e);
+            this.showMessage('Failed to initialize app.', true);
+        }
+    },
 
-            <!-- Players Tab -->
-            <div class="tab-pane fade" id="players" role="tabpanel" aria-labelledby="players-tab">
-                <h2>Manage Players</h2>
-                <div class="mb-3">
-                    <label for="playerName" class="form-label">Player Name</label>
-                    <input type="text" class="form-control" id="playerName" placeholder="Enter player name" required>
-                </div>
-                <div class="mb-3">
-                    <label for="playerContact" class="form-label">Contact Number</label>
-                    <input type="tel" class="form-control" id="playerContact" placeholder="Enter 10-digit contact number" pattern="[0-9]{10}" title="Enter a 10-digit phone number">
-                </div>
-                <button class="btn btn-primary me-2" id="addPlayerBtn" aria-label="Add a new player" title="Add a new player to the list">Add Player</button>
-                <button class="btn btn-danger me-2" id="resetDataBtn" aria-label="Reset all data" title="Clear all players, fees, and attendance">Reset All Data</button>
-                <button class="btn btn-success" id="downloadDbBtn" aria-label="Download database" title="Download the SQLite database file">Download Database</button>
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Contact Number</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="playerList"></tbody>
-                </table>
-            </div>
+    createTables() {
+        db.run(`
+            CREATE TABLE IF NOT EXISTS players (
+                name TEXT PRIMARY KEY,
+                contact TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS fees (
+                year_month TEXT PRIMARY KEY,
+                regular REAL NOT NULL,
+                casual REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS attendance (
+                player_name TEXT,
+                year_month TEXT,
+                week INTEGER,
+                attended INTEGER NOT NULL,
+                PRIMARY KEY (player_name, year_month, week),
+                FOREIGN KEY (player_name) REFERENCES players(name)
+            );
+            CREATE TABLE IF NOT EXISTS week_labels (
+                year_month_week TEXT PRIMARY KEY,
+                label TEXT NOT NULL
+            );
+        `);
+    },
 
-            <!-- Attendance Tab -->
-            <div class="tab-pane fade" id="attendance" role="tabpanel" aria-labelledby="attendance-tab">
-                <h2>Mark Attendance</h2>
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <label for="attendanceYear" class="form-label">Year</label>
-                        <select id="attendanceYear" class="form-select"></select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="attendanceMonth" class="form-label">Month</label>
-                        <select id="attendanceMonth" class="form-select">
-                            <option value="0">January</option>
-                            <option value="1">February</option>
-                            <option value="2">March</option>
-                            <option value="3">April</option>
-                            <option value="4">May</option>
-                            <option value="5">June</option>
-                            <option value="6">July</option>
-                            <option value="7">August</option>
-                            <option value="9">October</option>
-                            <option value="10">November</option>
-                            <option value="11">December</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="weekSelect" class="form-label">Week</label>
-                        <select id="weekSelect" class="form-select">
-                            <option value="1">Week 1</option>
-                            <option value="2">Week 2</option>
-                            <option value="3">Week 3</option>
-                            <option value="4">Week 4</option>
-                            <option value="5">Week 5</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="weekLabel" class="form-label">Week Label</label>
-                        <input type="text" class="form-control" id="weekLabel" placeholder="e.g., Session 1">
-                    </div>
-                </div>
-                <button class="btn btn-primary me-2" id="prevWeekBtn" aria-label="Go to previous week" title="View previous week's attendance">Previous Week</button>
-                <button class="btn btn-primary" id="nextWeekBtn" aria-label="Go to next week" title="View next week's attendance">Next Week</button>
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr>
-                            <th>Player</th>
-                            <th>Attended (Week <span id="currentWeek">1</span>)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendanceBody"></tbody>
-                </table>
-            </div>
+    showMessage(message, isError = false) {
+        const msgDiv = document.createElement('div');
+        msgDiv.textContent = message;
+        msgDiv.className = `message ${isError ? 'error' : 'success'}`;
+        const notificationArea = document.getElementById('notificationArea');
+        if (notificationArea) {
+            notificationArea.appendChild(msgDiv);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+    },
 
-            <!-- Fees Tab -->
-            <div class="tab-pane fade" id="fees" role="tabpanel" aria-labelledby="fees-tab">
-                <h2>Set Fees</h2>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="feeYear" class="form-label">Year</label>
-                        <select id="feeYear" class="form-select"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="feeMonth" class="form-label">Month</label>
-                        <select id="feeMonth" class="form-select">
-                            <option value="0">January</option>
-                            <option value="1">February</option>
-                            <option value="2">March</option>
-                            <option value="3">April</option>
-                            <option value="4">May</option>
-                            <option value="5">June</option>
-                            <option value="6">July</option>
-                            <option value="7">August</option>
-                            <option value="8">September</option>
-                            <option value="9">October</option>
-                            <option value="10">November</option>
-                            <option value="11">December</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="regularFee" class="form-label">Regular Per-Day Fee</label>
-                    <input type="number" class="form-control" id="regularFee" min="0" step="0.01" required>
-                </div>
-                <div class="mb-3">
-                    <label for="casualFee" class="form-label">Casual Per-Day Fee</label>
-                    <input type="number" class="form-control" id="casualFee" min="0" step="0.01" required>
-                </div>
-                <button class="btn btn-primary" id="saveFeesBtn" aria-label="Save fees" title="Save the per-day fees">Save Fees</button>
-                <p class="mt-3">Current Regular Fee: $<span id="currentRegularFee">0</span></p>
-                <p>Current Casual Fee: $<span id="currentCasualFee">0</span></p>
-                <h3 class="mt-4">Fee History</h3>
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>Regular Fee ($)</th>
-                            <th>Casual Fee ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="feeHistory"></tbody>
-                </table>
-            </div>
+    sanitizeInput(input) {
+        const div = document.createElement('div');
+        div.textContent = input;
+        return div.innerHTML;
+    },
 
-            <!-- Billing Tab -->
-            <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
-                <h2>Monthly Bills</h2>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="billingYear" class="form-label">Year</label>
-                        <select id="billingYear" class="form-select"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="billingMonth" class="form-label">Month</label>
-                        <select id="billingMonth" class="form-select">
-                            <option value="0">January</option>
-                            <option value="1">February</option>
-                            <option value="2">March</option>
-                            <option value="3">April</option>
-                            <option value="4">May</option>
-                            <option value="5">June</option>
-                            <option value="6">July</option>
-                            <option value="7">August</option>
-                            <option value="8">September</option>
-                            <option value="9">October</option>
-                            <option value="10">November</option>
-                            <option value="11">December</option>
-                        </select>
-                    </div>
-                </div>
-                <button class="btn btn-primary me-2" id="generateBillsBtn" aria-label="Generate monthly bills" title="Calculate bills for all players">Generate Bills</button>
-                <button class="btn btn-primary me-2" id="downloadBillsCsvBtn" aria-label="Download bills as CSV" title="Download bills as a CSV file">Download Bills (CSV)</button>
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr id="billTableHeader">
-                            <th>Player</th>
-                            <th>Weeks Played</th>
-                            <th>Amount ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="billBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    escapeCSV(str) {
+        return `"${str.replace(/"/g, '""')}"`;
+    },
 
-    <!-- Notification Area -->
-    <div id="notificationArea" class="notification-area fixed-bottom"></div>
+    populateYearDropdowns() {
+        const years = Array.from({ length: 5 }, (_, i) => this.currentYear - 2 + i);
+        const yearSelects = ['dashboardYear', 'attendanceYear', 'feeYear', 'billingYear'];
+        yearSelects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.innerHTML = years.map(year => `<option value="${year}">${year}</option>`).join('');
+            }
+        });
+    },
 
-    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.11.0/dist/sql-wasm.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-    <script src="app.js" defer></script>
-</body>
-</html>
+    setDefaultSelections() {
+        // Set default to current AEST year and month
+        const selects = [
+            { year: 'dashboardYear', month: 'dashboardMonth' },
+            { year: 'attendanceYear', month: 'attendanceMonth' },
+            { year: 'feeYear', month: 'feeMonth' },
+            { year: 'billingYear', month: 'billingMonth' }
+        ];
+        selects.forEach(({ year, month }) => {
+            const yearSelect = document.getElementById(year);
+            const monthSelect = document.getElementById(month);
+            if (yearSelect && monthSelect) {
+                yearSelect.value = this.currentYear;
+                monthSelect.value = this.currentMonth;
+            }
+        });
+    },
+
+    bindEventListeners() {
+        // Players Tab
+        document.getElementById('addPlayerBtn')?.addEventListener('click', () => this.addPlayer());
+        document.getElementById('resetDataBtn')?.addEventListener('click', () => this.resetData());
+        document.getElementById('downloadDbBtn')?.addEventListener('click', () => this.downloadDatabase());
+
+        // Attendance Tab
+        document.getElementById('attendanceYear')?.addEventListener('change', () => this.updateAttendanceTable());
+        document.getElementById('attendanceMonth')?.addEventListener('change', () => this.updateAttendanceTable());
+        document.getElementById('weekSelect')?.addEventListener('change', () => this.updateAttendanceTable());
+        document.getElementById('weekLabel')?.addEventListener('change', () => this.updateWeekLabel());
+        document.getElementById('prevWeekBtn')?.addEventListener('click', () => this.prevWeek());
+        document.getElementById('nextWeekBtn')?.addEventListener('click', () => this.nextWeek());
+
+        // Fees Tab
+        document.getElementById('feeYear')?.addEventListener('change', () => this.updateFeesDisplay());
+        document.getElementById('feeMonth')?.addEventListener('change', () => this.updateFeesDisplay());
+        document.getElementById('saveFeesBtn')?.addEventListener('click', () => this.saveFees());
+
+        // Billing Tab
+        document.getElementById('billingYear')?.addEventListener('change', () => this.generateBills());
+        document.getElementById('billingMonth')?.addEventListener('change', () => this.generateBills());
+        document.getElementById('generateBillsBtn')?.addEventListener('click', () => this.generateBills());
+        document.getElementById('downloadBillsCsvBtn')?.addEventListener('click', () => this.downloadBillsCSV());
+
+        // Dashboard Tab
+        document.getElementById('dashboardYear')?.addEventListener('change', () => this.updateDashboard());
+        document.getElementById('dashboardMonth')?.addEventListener('change', () => this.updateDashboard());
+    },
+
+    addPlayer() {
+        const name = this.sanitizeInput(document.getElementById('playerName')?.value.trim());
+        const contact = this.sanitizeInput(document.getElementById('playerContact')?.value.trim());
+        if (!name) {
+            this.showMessage('Please enter a valid player name.', true);
+            return;
+        }
+        const exists = db.exec(`SELECT 1 FROM players WHERE name = ?`, [name])[0];
+        if (exists) {
+            this.showMessage('Player already exists.', true);
+            return;
+        }
+        if (contact && !/^[0-9]{10}$/.test(contact)) {
+            this.showMessage('Please enter a valid 10-digit contact number.', true);
+            return;
+        }
+        try {
+            db.run(`INSERT INTO players (name, contact) VALUES (?, ?)`, [name, contact || 'N/A']);
+            this.updatePlayerList();
+            this.updateAttendanceTable();
+            this.updateDashboard();
+            document.getElementById('playerName').value = '';
+            document.getElementById('playerContact').value = '';
+            this.showMessage('Player added successfully!');
+        } catch (e) {
+            console.error('Error adding player:', e);
+            this.showMessage('Error adding player.', true);
+        }
+    },
+
+    removePlayer(name) {
+        if (confirm(`Are you sure you want to remove ${name}?`)) {
+            try {
+                db.run(`DELETE FROM players WHERE name = ?`, [name]);
+                db.run(`DELETE FROM attendance WHERE player_name = ?`, [name]);
+                this.updatePlayerList();
+                this.updateAttendanceTable();
+                this.updateDashboard();
+                this.generateBills();
+                this.showMessage(`${name} removed successfully!`);
+            } catch (e) {
+                console.error('Error removing player:', e);
+                this.showMessage('Error removing player.', true);
+            }
+        }
+    },
+
+    updatePlayerList() {
+        const tbody = document.getElementById('playerList');
+        if (tbody) {
+            tbody.innerHTML = '';
+            const result = db.exec(`SELECT name, contact FROM players`);
+            const players = result[0]?.values || [];
+            players.forEach(([name, contact]) => {
+                if (attendance === 0) return;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${name}</td>
+                    <td>${contact}</td>
+                    <td><button class="btn btn-danger btn-sm remove-player" data-name="${name}" aria-label="Remove ${name}" title="Remove ${name} from the list">Remove</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            // Bind remove buttons
+            document.querySelectorAll('.remove-player').forEach(btn => {
+                btn.addEventListener('click', () => this.removePlayer(btn.dataset.name));
+            });
+        }
+    },
+
+    saveFees() {
+        const year = parseInt(document.getElementById('feeYear')?.value);
+        const month = parseInt(document.getElementById('feeMonth')?.value);
+        const regularFee = parseFloat(document.getElementById('regularFee')?.value) || 0;
+        const casualFee = parseFloat(document.getElementById('casualFee')?.value) || 0;
+        if (regularFee < 0 || casualFee < 0) {
+            this.showMessage('Fees cannot be negative.', true);
+            return;
+        }
+        const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+        try {
+            db.run(`INSERT OR REPLACE INTO fees (year_month, regular, casual) VALUES (?, ?, ?)`, [yearMonth, regularFee, casualFee]);
+            this.updateFeesDisplay();
+            this.updateFeeHistory();
+            this.updateDashboard();
+            this.showMessage('Fees saved successfully!');
+        } catch (e) {
+            console.error('Error saving fees:', e);
+            this.showMessage('Error saving fees.', true);
+        }
+    },
+
+    updateFeesDisplay() {
+        const year = parseInt(document.getElementById('feeYear')?.value);
+        const month = parseInt(document.getElementById('feeMonth')?.value);
+        const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+        const result = db.exec(`SELECT regular, casual FROM fees WHERE year_month = ?`, [yearMonth])[0];
+        const fees = result?.values?.[0] || [0, 0];
+        const regularFeeEl = document.getElementById('currentRegularFee');
+        const casualFeeEl = document.getElementById('currentCasualFee');
+        if (regularFeeEl && casualFeeEl) {
+            regularFeeEl.textContent = fees[0].toFixed(2);
+            casualFeeEl.textContent = fees[1].toFixed(2);
+        }
+        this.updateFeeHistory();
+    },
+
+    updateFeeHistory() {
+        const tbody = document.getElementById('feeHistory');
+        if (tbody) {
+            tbody.innerHTML = '';
+            const result = db.exec(`SELECT year_month, regular, casual FROM fees ORDER BY year_month DESC`);
+            const fees = result[0]?.values || [];
+            fees.forEach(([yearMonth, regular, casual]) => {
+                const [year, month] = yearMonth.split('-').map(Number);
+                const monthName = new Date(year, month - 1, 1).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' });
+                if (attendance === 0) return;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${monthName}</td>
+                    <td>${regular.toFixed(2)}</td>
+                    <td>${casual.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    },
+
+    updateAttendanceTable() {
+        const year = parseInt(document.getElementById('attendanceYear')?.value);
+        const month = parseInt(document.getElementById('attendanceMonth')?.value);
+        const week = parseInt(document.getElementById('weekSelect')?.value);
+        this.currentYear = year;
+        this.currentMonth = month;
+        this.currentWeek = week;
+        this.updateWeekDisplay();
+        this.updateWeekButtons();
+        const tbody = document.getElementById('attendanceBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            const players = db.exec(`SELECT name FROM players`)[0]?.values || [];
+            const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+            players.forEach(([player]) => {
+                const tr = document.createElement('tr');
+                const tdName = document.createElement('td');
+                tdName.textContent = player;
+                const tdCheck = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.dataset.player = player;
+                const result = db.exec(`SELECT attended FROM attendance WHERE player_name = ? AND year_month = ? AND week = ?`, [player, yearMonth, week])[0];
+                checkbox.checked = result?.values?.[0]?.[0] === 1;
+                checkbox.setAttribute('aria-label', `Attendance for ${player} in week ${week}`);
+                checkbox.addEventListener('change', () => this.updateAttendance(player, yearMonth, week, checkbox.checked));
+                tdCheck.appendChild(checkbox);
+                tr.appendChild(tdName);
+                tr.appendChild(tdCheck);
+                tbody.appendChild(tr);
+            });
+            this.updateDashboard();
+        }
+    },
+
+    updateWeekDisplay() {
+        const monthKey = `${this.currentYear}-${this.currentMonth.toString().padStart(2, '0')}`;
+        const weekKey = `${monthKey}-${this.currentWeek}`;
+        const result = db.exec(`SELECT label FROM week_labels WHERE year_month_week = ?`, [weekKey])[0];
+        const label = result?.values?.[0]?.[0] || `Week ${this.currentWeek}`;
+        const weekLabelEl = document.getElementById('weekLabel');
+        const weekSelectEl = document.getElementById('weekSelect');
+        const currentWeekEl = document.getElementById('currentWeek');
+        if (weekLabelEl && weekSelectEl && currentWeekEl) {
+            weekLabelEl.value = result?.values?.[0]?.[0] || '';
+            weekSelectEl.value = this.currentWeek;
+            currentWeekEl.textContent = `${this.currentWeek} (${label})`;
+        }
+    },
+
+    updateWeekLabel() {
+        const label = this.sanitizeInput(document.getElementById('weekLabel')?.value.trim());
+        if (label) {
+            const monthKey = `${this.currentYear}-${this.currentMonth.toString().padStart(2, '0')}`;
+            const weekKey = `${monthKey}-${this.currentWeek}`;
+            try {
+                db.run(`INSERT OR REPLACE INTO week_labels (year_month_week, label) VALUES (?, ?)`, [weekKey, label]);
+                this.updateWeekDisplay();
+                this.showMessage(`Week ${this.currentWeek} label updated.`);
+            } catch (e) {
+                console.error('Error updating week label:', e);
+                this.showMessage('Error updating week label.', true);
+            }
+        }
+    },
+
+    updateWeekButtons() {
+    const prevBtn = document.getElementById('prevWeekBtn');
+    const nextBtn = document.getElementById('nextWeekBtn');
+    if (prevBtn) prevBtn.disabled = this.currentWeek <= 1;
+    if (nextBtn) nextBtn.disabled = this.currentWeek >= this.totalWeeks;
+},
+
+updateAttendance(player, yearMonth, week, attended) {
+    try {
+        db.run(
+            `INSERT OR REPLACE INTO attendance (player_name, year_month, week, attended) VALUES (?, ?, ?, ?)`,
+            [player, yearMonth, week, attended ? 1 : 0]
+        );
+        this.updateDashboard();
+        this.showMessage(`Attendance updated for ${player}.`);
+    } catch (e) {
+        console.error('Error updating attendance:', e);
+        this.showMessage('Error updating attendance.', true);
+    }
+},
+
+prevWeek() {
+    if (this.currentWeek > 1) {
+        this.currentWeek--;
+        const weekSelectEl = document.getElementById('weekSelect');
+if (weekSelectEl) weekSelectEl.value = this.currentWeek;
+        this.updateAttendanceTable();
+        this.updateWeekButtons();  // ← ensure buttons update
+    }
+},
+
+nextWeek() {
+    if (this.currentWeek < this.totalWeeks) {
+        this.currentWeek++;
+        const weekSelectEl = document.getElementById('weekSelect');
+if (weekSelectEl) weekSelectEl.value = this.currentWeek;
+        this.updateAttendanceTable();
+        this.updateWeekButtons();  // ← ensure buttons update
+    }
+},
+
+
+    updateDashboard() {
+        const year = parseInt(document.getElementById('dashboardYear')?.value);
+        const month = parseInt(document.getElementById('dashboardMonth')?.value);
+        if (isNaN(year) || isNaN(month)) {
+            this.showMessage('Invalid year or month selected.', true);
+            return;
+        }
+        const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+        const monthName = new Date(year, month, 15).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' });
+
+        // Update Summary Table
+        const tbody = document.getElementById('dashboardSummary');
+        if (tbody) {
+            tbody.innerHTML = '';
+            const feeResult = db.exec(`SELECT regular, casual FROM fees WHERE year_month = ?`, [yearMonth])[0];
+            const fees = feeResult?.values?.[0] || [0, 0];
+            const playersResult = db.exec(`SELECT name FROM players`)[0];
+            const players = playersResult?.values || [];
+            players.forEach(([player]) => {
+                const attendanceResult = db.exec(`SELECT COUNT(*) FROM attendance WHERE player_name = ? AND year_month = ? AND attended = 1`, [player, yearMonth])[0];
+                const attendance = attendanceResult?.values?.[0]?.[0] || 0;
+                const isRegular = attendance >= 4;
+                const fee = isRegular ? fees[0] : fees[1];
+                const amount = attendance * fee;
+                if (attendance === 0) return;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${player}</td>
+                    <td>${monthName}</td>
+                    <td>${attendance}</td>
+                    <td>$${amount.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Update Attendance Graph
+        if (typeof Plotly !== 'undefined' && document.getElementById('attendanceGraph')) {
+            const playersResult = db.exec(`SELECT name FROM players`)[0];
+            const players = playersResult?.values || [];
+            const playerNames = players.map(p => p[0] || '');
+            const attendanceCounts = players.map(([player]) => {
+                const result = db.exec(`SELECT COUNT(*) FROM attendance WHERE player_name = ? AND year_month = ? AND attended = 1`, [player, yearMonth])[0];
+                return result?.values?.[0]?.[0] || 0;
+            });
+            const trace = {
+                x: playerNames,
+                y: attendanceCounts,
+                type: 'bar',
+                marker: { color: '#4ecdc4' }
+            };
+            const layout = {
+                title: `Attendance for ${monthName}`,
+                xaxis: { title: 'Player' },
+                yaxis: { title: 'Attendance Count' },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+                margin: { t: 50, b: 100, l: 50, r: 50 }
+            };
+            try {
+                Plotly.newPlot('attendanceGraph', [trace], layout);
+            } catch (e) {
+                console.error('Error rendering Plotly graph:', e);
+                this.showMessage('Failed to render attendance graph.', true);
+            }
+        } else {
+            console.warn('Plotly not loaded or graph container missing.');
+        }
+    },
+
+    generateBills() {
+        const year = parseInt(document.getElementById('billingYear')?.value);
+        const month = parseInt(document.getElementById('billingMonth')?.value);
+        if (isNaN(year) || isNaN(month)) {
+            this.showMessage('Invalid year or month selected.', true);
+            return;
+        }
+        const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+        const feeResult = db.exec(`SELECT regular, casual FROM fees WHERE year_month = ?`, [yearMonth])[0];
+        const fees = feeResult?.values?.[0] || [0, 0];
+        const monthName = new Date(year, month, 15).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long' });
+        const header = document.getElementById('billTableHeader');
+        if (header) {
+            header.innerHTML = `
+                <th>Player</th>
+                <th>Weeks Played (${monthName})</th>
+                <th>Amount ($)</th>
+            `;
+        }
+        const tbody = document.getElementById('billBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            let totalRevenue = 0;
+            const playersResult = db.exec(`SELECT name FROM players`)[0];
+            const players = playersResult?.values || [];
+            players.forEach(([player]) => {
+                const attendanceResult = db.exec(`SELECT COUNT(*) FROM attendance WHERE player_name = ? AND year_month = ? AND attended = 1`, [player, yearMonth])[0];
+                const attendance = attendanceResult?.values?.[0]?.[0] || 0;
+                const isRegular = attendance >= 4;
+                const fee = isRegular ? fees[0] : fees[1];
+                const amount = fee * attendance;
+                totalRevenue += amount;
+                if (attendance === 0) return;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${player}</td>
+                    <td>${attendance} (${isRegular ? 'Regular' : 'Casual'})</td>
+                    <td>$${amount.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            this.showMessage(`Bills generated for ${monthName} ${year}. Total Revenue: $${totalRevenue.toFixed(2)}`);
+        }
+    },
+
+    downloadBillsCSV() {
+        const year = parseInt(document.getElementById('billingYear')?.value);
+        const month = parseInt(document.getElementById('billingMonth')?.value);
+        if (isNaN(year) || isNaN(month)) {
+            this.showMessage('Invalid year or month.', true);
+            return;
+        }
+        const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+        const feeResult = db.exec(`SELECT regular, casual FROM fees WHERE year_month = ?`, [yearMonth])[0];
+        const fees = feeResult?.values?.[0] || [0, 0];
+        const monthName = new Date(year, month, 15).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long' });
+        let csv = 'Player,Attendance,Type,Amount\n';
+        const playersResult = db.exec(`SELECT name FROM players`)[0];
+        const players = playersResult?.values || [];
+        players.forEach(([player]) => {
+            const attendanceResult = db.exec(`SELECT COUNT(*) FROM attendance WHERE player_name = ? AND year_month = ? AND attended = 1`, [player, yearMonth])[0];
+            const attendance = attendanceResult?.values?.[0]?.[0] || 0;
+            const isRegular = attendance >= 4;
+            const fee = isRegular ? fees[0] : fees[1];
+            const amount = fee * attendance;
+            csv += `${this.escapeCSV(player)},${attendance},${isRegular ? 'Regular' : 'Casual'},${amount.toFixed(2)}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `badminton_bills_${monthName}_${year}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showMessage('Bills downloaded as CSV successfully!');
+    },
+
+    downloadDatabase() {
+        const data = db.export();
+        const blob = new Blob([data], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'badminton.db';
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showMessage('Database downloaded successfully!');
+    },
+
+    resetData() {
+        if (confirm('Are you sure you want to reset all data?')) {
+            try {
+                db.run(`DROP TABLE IF EXISTS players; DROP TABLE IF EXISTS fees; DROP TABLE IF EXISTS attendance; DROP TABLE IF EXISTS week_labels;`);
+                this.createTables();
+                this.prefillData();
+                this.updatePlayerList();
+                this.updateFeesDisplay();
+                this.updateAttendanceTable();
+                this.updateDashboard();
+                this.generateBills();
+                this.showMessage('Data reset successfully!');
+            } catch (e) {
+                console.error('Error resetting data:', e);
+                this.showMessage('Error resetting data.', true);
+            }
+        }
+    }
+};
+
+BadmintonApp.init();
+//3:00am
