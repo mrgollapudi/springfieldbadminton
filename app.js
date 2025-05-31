@@ -61,7 +61,6 @@ const BadmintonApp = {
 
     prefillData() {
         // Removed player prefill
-        `);
 
         // Prefill fees for June 2025
         db.run(`
@@ -586,4 +585,4 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
 };
 
 BadmintonApp.init();
-//2:42am
+//2:45am
