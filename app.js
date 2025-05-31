@@ -554,4 +554,4 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
 };
 
 BadmintonApp.init();
-//3:00am
+//3:30am 1st Jun 2025
