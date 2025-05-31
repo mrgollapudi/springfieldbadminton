@@ -372,40 +372,44 @@ const BadmintonApp = {
     },
 
     updateWeekButtons() {
-        const prevBtn = document.getElementById('prevWeekBtn');
-        const nextBtn = document.getElementById('nextWeekBtn');
-        if (prevBtn && nextBtn) {
-            prevBtn.disabled = this.currentWeek === 1;
-            nextBtn.disabled = this.currentWeek === this.totalWeeks;
-        }
-    },
+    const prevBtn = document.getElementById('prevWeekBtn');
+    const nextBtn = document.getElementById('nextWeekBtn');
+    if (prevBtn) prevBtn.disabled = this.currentWeek <= 1;
+    if (nextBtn) nextBtn.disabled = this.currentWeek >= this.totalWeeks;
+},
 
-    updateAttendance(player, yearMonth, week, attended) {
-        try {
-            db.run(`INSERT OR REPLACE INTO attendance (player_name, year_month, week, attended) VALUES (?, ?, ?, ?)`, [player, yearMonth, week, attended ? 1 : 0]);
-            this.updateDashboard();
-            this.showMessage(`Attendance updated for ${player}.`);
-        } catch (e) {
-            console.error('Error updating attendance:', e);
-            this.showMessage('Error updating attendance.', true);
-        }
-    },
+updateAttendance(player, yearMonth, week, attended) {
+    try {
+        db.run(
+            `INSERT OR REPLACE INTO attendance (player_name, year_month, week, attended) VALUES (?, ?, ?, ?)`,
+            [player, yearMonth, week, attended ? 1 : 0]
+        );
+        this.updateDashboard();
+        this.showMessage(`Attendance updated for ${player}.`);
+    } catch (e) {
+        console.error('Error updating attendance:', e);
+        this.showMessage('Error updating attendance.', true);
+    }
+},
 
-    prevWeek() {
-        if (this.currentWeek > 1) {
-            this.currentWeek--;
-            document.getElementById('weekSelect')?.value = this.currentWeek;
-            this.updateAttendanceTable();
-        }
-    },
+prevWeek() {
+    if (this.currentWeek > 1) {
+        this.currentWeek--;
+        document.getElementById('weekSelect')?.value = this.currentWeek;
+        this.updateAttendanceTable();
+        this.updateWeekButtons();  // ← ensure buttons update
+    }
+},
 
-    nextWeek() {
-        if (this.currentWeek < this.totalWeeks) {
-            this.currentWeek++;
-            document.getElementById('weekSelect')?.value = this.currentWeek;
-            this.updateAttendanceTable();
-        }
-    },
+nextWeek() {
+    if (this.currentWeek < this.totalWeeks) {
+        this.currentWeek++;
+        document.getElementById('weekSelect')?.value = this.currentWeek;
+        this.updateAttendanceTable();
+        this.updateWeekButtons();  // ← ensure buttons update
+    }
+},
+
 
     updateDashboard() {
         const year = parseInt(document.getElementById('dashboardYear')?.value);
