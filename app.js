@@ -505,7 +505,6 @@ const BadmintonApp = {
                 const attendanceResult = db.exec(`SELECT COUNT(*) FROM attendance WHERE player_name = ? AND year_month = ? AND attended = 1`, [player, yearMonth])[0];
                 const attendance = attendanceResult?.values?.[0]?.[0] || 0;
                 const isRegular = attendance >= 4;
-                const isRegular = attendance >= 4;
                 const fee = isRegular ? fees[0] : fees[1];
                 const amount = fee * attendance;
                 totalRevenue += amount;
@@ -586,3 +585,4 @@ const BadmintonApp = {
 };
 
 BadmintonApp.init();
+//2:19am
