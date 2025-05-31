@@ -18,7 +18,6 @@ const BadmintonApp = {
             SQL = await initSqlJs({ wasmBinary });
             db = new SQL.Database();
             this.createTables();
-            this.prefillData();
             this.populateYearDropdowns();
             this.setDefaultSelections();
             this.bindEventListeners();
