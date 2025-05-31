@@ -60,12 +60,7 @@ const BadmintonApp = {
     },
 
     prefillData() {
-        // Prefill players
-        db.run(`
-            INSERT OR IGNORE INTO players (name, contact) VALUES
-                ('Alice Smith', '1234567890'),
-                ('Bob Johnson', '0987654321'),
-                ('Charlie Brown', '5555555555');
+        // Removed player prefill
         `);
 
         // Prefill fees for June 2025
@@ -591,4 +586,4 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
 };
 
 BadmintonApp.init();
-//2:34am
+//2:42am
