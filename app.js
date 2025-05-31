@@ -192,6 +192,7 @@ const BadmintonApp = {
             const result = db.exec(`SELECT name, contact FROM players`);
             const players = result[0]?.values || [];
             players.forEach(([name, contact]) => {
+                if (attendance === 0) return;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${name}</td>
@@ -253,6 +254,7 @@ const BadmintonApp = {
             fees.forEach(([yearMonth, regular, casual]) => {
                 const [year, month] = yearMonth.split('-').map(Number);
                 const monthName = new Date(year, month - 1, 1).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' });
+                if (attendance === 0) return;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${monthName}</td>
@@ -380,7 +382,7 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
             return;
         }
         const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
-        const monthName = new Date(year, month, 1).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' });
+        const monthName = new Date(year, month, 15).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' });
 
         // Update Summary Table
         const tbody = document.getElementById('dashboardSummary');
@@ -396,12 +398,13 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
                 const isRegular = attendance >= 4;
                 const fee = isRegular ? fees[0] : fees[1];
                 const amount = attendance * fee;
+                if (attendance === 0) return;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${player}</td>
                     <td>${monthName}</td>
                     <td>${attendance}</td>
-                    <td>${amount.toFixed(2)}</td>
+                    <td>$${amount.toFixed(2)}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -451,7 +454,7 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
         const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
         const feeResult = db.exec(`SELECT regular, casual FROM fees WHERE year_month = ?`, [yearMonth])[0];
         const fees = feeResult?.values?.[0] || [0, 0];
-        const monthName = new Date(year, month, 1).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long' });
+        const monthName = new Date(year, month, 15).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long' });
         const header = document.getElementById('billTableHeader');
         if (header) {
             header.innerHTML = `
@@ -473,11 +476,12 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
                 const fee = isRegular ? fees[0] : fees[1];
                 const amount = fee * attendance;
                 totalRevenue += amount;
+                if (attendance === 0) return;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${player}</td>
                     <td>${attendance} (${isRegular ? 'Regular' : 'Casual'})</td>
-                    <td>${amount.toFixed(2)}</td>
+                    <td>$${amount.toFixed(2)}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -495,7 +499,7 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
         const yearMonth = `${year}-${month.toString().padStart(2, '0')}`;
         const feeResult = db.exec(`SELECT regular, casual FROM fees WHERE year_month = ?`, [yearMonth])[0];
         const fees = feeResult?.values?.[0] || [0, 0];
-        const monthName = new Date(year, month, 1).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long' });
+        const monthName = new Date(year, month, 15).toLocaleString('en-US', { timeZone: 'Australia/Sydney', month: 'long' });
         let csv = 'Player,Attendance,Type,Amount\n';
         const playersResult = db.exec(`SELECT name FROM players`)[0];
         const players = playersResult?.values || [];
@@ -550,4 +554,4 @@ if (weekSelectEl) weekSelectEl.value = this.currentWeek;
 };
 
 BadmintonApp.init();
-//2:45am
+//3:00am
