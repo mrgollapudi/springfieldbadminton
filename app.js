@@ -395,7 +395,8 @@ updateAttendance(player, yearMonth, week, attended) {
 prevWeek() {
     if (this.currentWeek > 1) {
         this.currentWeek--;
-        document.getElementById('weekSelect')?.value = this.currentWeek;
+        const weekSelectEl = document.getElementById('weekSelect');
+if (weekSelectEl) weekSelectEl.value = this.currentWeek;
         this.updateAttendanceTable();
         this.updateWeekButtons();  // ← ensure buttons update
     }
@@ -404,7 +405,8 @@ prevWeek() {
 nextWeek() {
     if (this.currentWeek < this.totalWeeks) {
         this.currentWeek++;
-        document.getElementById('weekSelect')?.value = this.currentWeek;
+        const weekSelectEl = document.getElementById('weekSelect');
+if (weekSelectEl) weekSelectEl.value = this.currentWeek;
         this.updateAttendanceTable();
         this.updateWeekButtons();  // ← ensure buttons update
     }
@@ -589,4 +591,4 @@ nextWeek() {
 };
 
 BadmintonApp.init();
-//2:31am
+//2:34am
