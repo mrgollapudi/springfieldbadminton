@@ -59,40 +59,6 @@ const BadmintonApp = {
         `);
     },
 
-    prefillData() {
-        // Removed player prefill
-
-        // Prefill fees for June 2025
-        db.run(`
-            INSERT OR IGNORE INTO fees (year_month, regular, casual) VALUES
-                ('2025-06', 10.00, 15.00);
-        `);
-
-        // Prefill attendance for June 2025
-        db.run(`
-            INSERT OR IGNORE INTO attendance (player_name, year_month, week, attended) VALUES
-                ('Alice Smith', '2025-06', 1, 1),
-                ('Alice Smith', '2025-06', 2, 1),
-                ('Alice Smith', '2025-06', 3, 1),
-                ('Alice Smith', '2025-06', 4, 1),
-                ('Bob Johnson', '2025-06', 1, 1),
-                ('Bob Johnson', '2025-06', 2, 0),
-                ('Charlie Brown', '2025-06', 1, 1),
-                ('Charlie Brown', '2025-06', 2, 1),
-                ('Charlie Brown', '2025-06', 3, 0);
-        `);
-
-        // Prefill week labels for June 2025
-        db.run(`
-            INSERT OR IGNORE INTO week_labels (year_month_week, label) VALUES
-                ('2025-06-1', 'Session 1'),
-                ('2025-06-2', 'Session 2'),
-                ('2025-06-3', 'Session 3'),
-                ('2025-06-4', 'Session 4'),
-                ('2025-06-5', 'Session 5');
-        `);
-    },
-
     showMessage(message, isError = false) {
         const msgDiv = document.createElement('div');
         msgDiv.textContent = message;
